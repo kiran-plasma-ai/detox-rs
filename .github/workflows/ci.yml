@@ -1,0 +1,23 @@
+# PR/push gate: tests + clippy on every host we ship. The deeper
+# filesystem matrix (TESTPLAN §1) stays a release-gate job — standard
+# runners can't mkfs loop images. Windows leg is compile+test verified;
+# first-run friction (clippy component, path separators) is expected.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup component add clippy
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test

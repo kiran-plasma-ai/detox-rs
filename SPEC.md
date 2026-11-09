@@ -104,7 +104,7 @@ Rationale for `clean`'s charset: with reserved-name escaping opted in (or on `po
 ### 3.4 Distribution model
 
 - Release artifact: **one statically linked binary per target** (`x86_64/aarch64-unknown-linux-musl`, macOS universal2, Windows MSVC, static FreeBSD where toolchain permits). musl static → runs in `scratch`/`alpine` containers, rescue shells, embedded targets; no libc, no installer, no man pages required.
-- Build: `dist/build.sh [target …]` (v0.2.5) — per-target `cargo build --release --target <triple>`; the workspace no longer forces a default target (that broke native macOS/Windows builds). `crt-static` is pinned per musl target in `.cargo/config.toml`.
+- Build: `dist/build.sh [target …]` (v0.2.5) — per-target `cargo build --release --target <triple>`; the workspace no longer forces a default target (that broke native macOS/Windows builds). `crt-static` is pinned per musl target in `.cargo/config.toml`. aarch64 musl requires `aarch64-linux-musl-gcc` on PATH (the script fails fast naming it); every musl artifact is asserted static before packaging.
 - All translation tables, sequences, and config **embedded in the binary**; `--init` optionally writes the default TOML config to stdout or `$XDG_CONFIG_HOME/detox/config.toml`.
 - Acceptance test (§11): golden vectors run inside a `FROM scratch` container containing only the copied binary — must pass 100%.
 
@@ -252,7 +252,7 @@ Table-driven; every vector asserted on ext4 (ci-sensitive), a probed-ci loop ima
 
 "Much better tested" is a requirement, not a vibe (items 1–6 are addressable as §11.1–§11.6):
 
-1. **Golden vectors** (§9) — must pass on ext4, tmpfs, a ci loop image (vfat or ntfs3g), and inside the §3.4 `FROM scratch` container. CI runs all four.
+1. **Golden vectors** (§9) — must pass on ext4, tmpfs, a ci loop image (vfat or ntfs3g), and inside the §3.4 `FROM scratch` container. Host test/clippy gating runs on all three OSes via `.github/workflows/ci.yml`; the loop-image and scratch-container legs are release-gate jobs in `release.yml` (§3.4), added with the first tagged release — until then they run in the maintainer environment per TESTPLAN §1.
 2. **Filesystem matrix** — mkfs.vfat/mkfs.exfat/ntfs3g loop images × all three profiles × the vectors; APFS/HFS+ behavior verified via fold-simulation tests where the real fs is unavailable (APFS ci-insensitivity is probed at runtime by the tool itself — §3.2).
 3. **Property tests** — idempotency (INV-1), injectivity (INV-4), undo round-trip (`undo(run(x))` restores byte-exact names), no-clobber under concurrent renamer noise.
 4. **Fuzz** — arbitrary-byte filenames (Linux permits anything but `/` and NUL); mutated/truncated UTF-8; RFC 2047/2231 header fuzz with double-encoding mutants (MIME-1 must never fire twice); deep paths; boundary lengths (254/255/256 bytes, astral-unit arithmetic on exFAT profile).

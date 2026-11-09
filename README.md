@@ -23,7 +23,7 @@ Clean names, never lose data: no overwrites ever (renameat2 `RENAME_NOREPLACE`),
 - mbox support, nested `message/rfc822` (depth-capped), hard links for multi-filename parts, per-part sha256 in the report.
 - Every extracted file journaled; `undo` removes the batch.
 
-**Distribution** — one static-pie musl binary (≈950 KB), no runtime dependencies, runs in `scratch`/`alpine` containers and rescue shells. Builds from source with `cargo build --release` (musl target is the workspace default).
+**Distribution** — one static-pie musl binary (≈950 KB), no runtime dependencies, runs in `scratch`/`alpine` containers and rescue shells. Linux release builds go through `dist/build.sh` (v0.2.5: no forced default target; `crt-static` pinned per musl target — native macOS/Windows builds stay native).
 
 ## Quickstart
 
@@ -51,12 +51,13 @@ cargo build --release --target x86_64-unknown-linux-musl
 # → target/x86_64-unknown-linux-musl/release/detox-rs
 
 # or packaged, for any supported target:
-dist/build.sh x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+dist/build.sh                                   # host-appropriate default
+dist/build.sh aarch64-unknown-linux-musl        # needs aarch64-linux-musl-gcc
 ```
 
 Cross-platform: the crate compiles for `x86_64/aarch64-unknown-linux-musl`, `x86_64/aarch64-apple-darwin` (lipo them for universal2), and `x86_64-pc-windows-msvc` — `dist/build.sh` and `.github/workflows/release.yml` build all of them; macOS gets an atomic no-replace rename (`renamex_np`) and Windows gets a real volume+file-index identity for undo checks. Release binaries attach to GitHub tags.
 
-Three small crates (`libc`, `unicode-normalization`, `unicode-general-category`) are statically linked in; there are no runtime dependencies. `Cargo.lock` is committed and the build is reproducible (verified bit-for-bit from a clean tree).
+Three small crates (`libc`, `unicode-normalization`, `unicode-general-category`) are statically linked in; there are no runtime dependencies. `Cargo.lock` is committed and the build is reproducible (verified bit-for-bit from a clean tree). Do not export `RUSTFLAGS` — an env override silently replaces the per-target `+crt-static` pinning in `.cargo/config.toml` (and the static asserts in `dist/build.sh` will catch a regressed artifact).
 
 ## Testing
 
