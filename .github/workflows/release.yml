@@ -1,0 +1,88 @@
+# Release build matrix (SPEC §3.4). DRAFT: written but not yet exercised by
+# a real tag push — expect first-run friction (toolchain names, aarch64
+# cross). x86_64-musl is the fully-proven path locally.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add x86_64-unknown-linux-musl
+      - run: sudo apt-get install -y musl-tools
+      - run: cargo build --release --target x86_64-unknown-linux-musl
+      - run: |
+          cd target/x86_64-unknown-linux-musl/release
+          tar -czf detox-rs-x86_64-unknown-linux-musl.tar.gz detox-rs
+          sha256sum detox-rs-x86_64-unknown-linux-musl.tar.gz > checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: target/x86_64-unknown-linux-musl/release/detox-rs-*.tar.gz
+
+  # aarch64 musl needs a cross linker; `cross` uses docker on the runner.
+  linux-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo install cross --locked
+      - run: cross build --release --target aarch64-unknown-linux-musl
+      - run: |
+          cd target/aarch64-unknown-linux-musl/release
+          tar -czf detox-rs-aarch64-unknown-linux-musl.tar.gz detox-rs
+          sha256sum detox-rs-aarch64-unknown-linux-musl.tar.gz >> checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-aarch64
+          path: target/aarch64-unknown-linux-musl/release/detox-rs-*.tar.gz
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+      - run: cargo build --release --target x86_64-apple-darwin
+      - run: cargo build --release --target aarch64-apple-darwin
+      - run: |
+          lipo -create \
+            target/x86_64-apple-darwin/release/detox-rs \
+            target/aarch64-apple-darwin/release/detox-rs \
+            -output detox-rs-universal2-apple-darwin
+          shasum -a 256 detox-rs-universal2-apple-darwin > checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal2
+          path: detox-rs-universal2-apple-darwin
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release
+      - shell: pwsh
+        run: |
+          Compress-Archive target/release/detox-rs.exe detox-rs-x86_64-pc-windows-msvc.zip
+          Get-FileHash detox-rs-x86_64-pc-windows-msvc.zip -Algorithm SHA256 > checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: detox-rs-x86_64-pc-windows-msvc.zip
+
+  release:
+    needs: [linux, linux-aarch64, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist-out
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist-out/*

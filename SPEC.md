@@ -1,6 +1,7 @@
 # detox (rewrite) — functional specification
 
-Status: draft v0.2.4 · 2026-11-09
+Status: draft v0.2.5 · 2026-11-09
+v0.2.5 delta: cross-platform build prep. `.cargo/config.toml` no longer forces a default musl target (broke native macOS/Windows builds); `crt-static` pinned per musl target. New: `file_identity()` (unix dev/ino, Windows volume-serial+file-index via GetFileInformationByHandle), macOS `renamex_np(RENAME_EXCL)` atomic no-replace, Windows `FILE_FLAG_OPEN_REPARSE_POINT` on overwrite opens, `dist/build.sh`, release CI matrix (draft). All targets compile-checked (`cargo check --all-targets`) for: x86_64/aarch64 musl, x86_64/aarch64 apple-darwin, x86_64-pc-windows-msvc. No behavior change.
 v0.2.4 delta: binary renamed `detox-rs` (user ruling); env prefix `DETOX_RS_*`; journal dir `detox-rs/journal`. Behavior unchanged.
 v0.2.2 delta: SAN stage corrected — golden vectors (§9 rows 1, 19) require *removal* of decoration punctuation `()[]{},;!$&`, not replacement with `_`; dots-family special case deleted (all-dots names reduce to `_` via standard pipeline, preserving INV-1). §3.1/§3.3/§5.5/§9 updated, no other behavior change.
 v0.2.3 delta: reserved-name escape runs after LEN (catches truncation-created stems). Documented INV-1 exception: under caps where stem+1 > cap, the escape is cut to fit and a second application may shorten the name once more (`_CO → CO`); converges after at most two runs.
@@ -102,7 +103,8 @@ Rationale for `clean`'s charset: with reserved-name escaping opted in (or on `po
 
 ### 3.4 Distribution model
 
-- Release artifact: **one statically linked binary per target** (`x86_64/aarch64-unknown-linux-musl`, macOS universal2, static FreeBSD where toolchain permits). musl static → runs in `scratch`/`alpine` containers, rescue shells, embedded targets; no libc, no installer, no man pages required.
+- Release artifact: **one statically linked binary per target** (`x86_64/aarch64-unknown-linux-musl`, macOS universal2, Windows MSVC, static FreeBSD where toolchain permits). musl static → runs in `scratch`/`alpine` containers, rescue shells, embedded targets; no libc, no installer, no man pages required.
+- Build: `dist/build.sh [target …]` (v0.2.5) — per-target `cargo build --release --target <triple>`; the workspace no longer forces a default target (that broke native macOS/Windows builds). `crt-static` is pinned per musl target in `.cargo/config.toml`.
 - All translation tables, sequences, and config **embedded in the binary**; `--init` optionally writes the default TOML config to stdout or `$XDG_CONFIG_HOME/detox/config.toml`.
 - Acceptance test (§11): golden vectors run inside a `FROM scratch` container containing only the copied binary — must pass 100%.
 

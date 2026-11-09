@@ -734,8 +734,8 @@ fn write_extract_journal(
         // both the primary and its aliases must be journaled for undo to
         // restore pre-extraction state fully.
         if let Ok(md) = std::fs::symlink_metadata(&e.file) {
-            use std::os::unix::fs::MetadataExt;
-            created.push((e.file.clone(), md.dev(), md.ino()));
+            let (d, i) = fs::file_identity(&e.file, &md);
+            created.push((e.file.clone(), d, i));
         }
     }
     if created.is_empty() {
@@ -901,6 +901,13 @@ fn walk_part(
         {
             use std::os::unix::fs::OpenOptionsExt;
             open.custom_flags(libc::O_NOFOLLOW);
+        }
+        #[cfg(windows)]
+        {
+            // FILE_FLAG_OPEN_REPARSE_POINT: don't resolve a swapped-in
+            // symlink at open time (O_NOFOLLOW equivalent on Windows).
+            use std::os::windows::fs::OpenOptionsExt;
+            open.custom_flags(0x0020_0000);
         }
     } else {
         open.create_new(true);

@@ -258,11 +258,83 @@ impl std::fmt::Display for CommitError {
     }
 }
 
+/// Filesystem identity for journal dev+inode checks.
+/// Unix: real dev/ino from the metadata. Windows: volume serial + file
+/// index via GetFileInformationByHandle (std's accessors are unstable), so
+/// the path is re-opened with OPEN_REPARSE to match the link's own
+/// identity, like symlink_metadata. Other OSes: (0,0) — the check
+/// degenerates to path-only; only shipped targets get a hard identity.
+pub fn file_identity(p: &Path, md: &fs::Metadata) -> (u64, u64) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let _ = p;
+        (md.dev(), md.ino())
+    }
+    #[cfg(windows)]
+    {
+        windows_identity(p).unwrap_or((0, 0))
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (p, md);
+        (0, 0)
+    }
+}
+
+#[cfg(windows)]
+fn windows_identity(p: &Path) -> Option<(u64, u64)> {
+    use std::os::windows::fs::OpenOptionsExt;
+    use std::os::windows::io::AsRawHandle;
+
+    // BY_HANDLE_FILE_INFORMATION (winbase.h); FILETIME modeled as two
+    // DWORDs to preserve 4-byte packing.
+    #[repr(C)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+    #[repr(C)]
+    struct ByHandleInfo {
+        file_attributes: u32,
+        creation: FileTime,
+        last_access: FileTime,
+        last_write: FileTime,
+        volume_serial: u32,
+        size_high: u32,
+        size_low: u32,
+        links: u32,
+        index_high: u32,
+        index_low: u32,
+    }
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetFileInformationByHandle(h: *mut std::ffi::c_void, i: *mut ByHandleInfo) -> i32;
+    }
+
+    // OPEN_REPARSE: identity of the link itself, not its target.
+    // BACKUP_SEMANTICS: directories open too. Desired access 0 — a
+    // query-only handle is all GetFileInformationByHandle needs.
+    let f = std::fs::OpenOptions::new()
+        .custom_flags(0x0020_0000 | 0x0200_0000) /* OPEN_REPARSE | BACKUP_SEMANTICS */
+        .open(p)
+        .ok()?;
+    let mut info: ByHandleInfo = unsafe { std::mem::zeroed() };
+    let ok = unsafe { GetFileInformationByHandle(f.as_raw_handle(), &mut info) };
+    (ok != 0).then(|| {
+        (
+            info.volume_serial as u64,
+            ((info.index_high as u64) << 32) | info.index_low as u64,
+        )
+    })
+}
+
 fn dev_ino(p: &Path) -> Option<(u64, u64)> {
-    use std::os::unix::fs::MetadataExt;
     // symlink_metadata: journal the link's own identity, not its target's —
     // undo must match (and restore) the link itself.
-    fs::symlink_metadata(p).ok().map(|m| (m.dev(), m.ino()))
+    fs::symlink_metadata(p)
+        .ok()
+        .map(|m| file_identity(p, &m))
 }
 
 #[derive(Debug)]
@@ -375,6 +447,22 @@ fn rename_noreplace(old: &Path, new: &Path) -> io::Result<()> {
             Some(libc::ENOSYS) | Some(libc::EINVAL) => {} // fall through to fallback
             _ => return Err(e),
         }
+    }
+    // macOS: renamex_np(RENAME_EXCL) is the same atomic no-replace primitive
+    // as renameat2(NOREPLACE). Elsewhere the lstat+rename fallback stands;
+    // on Windows std rename fails rather than replaces, so the race fails
+    // safe there (and is documented on other unixes).
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        const RENAME_EXCL: libc::c_uint = 0x4; // <sys/renamex_np.h>
+        let ob = std::ffi::CString::new(old.as_os_str().as_bytes()).unwrap();
+        let nb = std::ffi::CString::new(new.as_os_str().as_bytes()).unwrap();
+        let ret = unsafe { libc::renamex_np(ob.as_ptr(), nb.as_ptr(), RENAME_EXCL) };
+        if ret == 0 {
+            return Ok(());
+        }
+        return Err(io::Error::last_os_error());
     }
     if lstat_exists(new) {
         return Err(io::Error::new(io::ErrorKind::AlreadyExists, "target exists"));
@@ -638,8 +726,7 @@ pub fn undo(sel: UndoSel, journal_dir: &Path) -> Result<UndoReport, UndoError> {
             match fs::symlink_metadata(&e.new) {
                 Err(_) => report.skipped.push((e.new.clone(), SkipReason::Missing)),
                 Ok(md) => {
-                    use std::os::unix::fs::MetadataExt;
-                    if (md.dev(), md.ino()) != (e.dev, e.ino) {
+                    if file_identity(&e.new, &md) != (e.dev, e.ino) {
                         report.skipped.push((e.new.clone(), SkipReason::Mismatch));
                     } else {
                         match fs::remove_file(&e.new) {
@@ -692,8 +779,7 @@ fn restore_one(e: &JEntry) -> Result<(), SkipReason> {
         Ok(m) => m,
         Err(_) => return Err(SkipReason::Missing),
     };
-    use std::os::unix::fs::MetadataExt;
-    if (md.dev(), md.ino()) != (e.dev, e.ino) {
+    if file_identity(&e.new, &md) != (e.dev, e.ino) {
         return Err(SkipReason::Mismatch);
     }
     if let Some(parent) = e.old.parent() {

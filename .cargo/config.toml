@@ -1,10 +1,9 @@
-# Dist builds must be static single binaries (SPEC §3.4): default the whole
-# workspace to musl so `cargo build --release` is the distributable artifact.
-[build]
-target = "x86_64-unknown-linux-musl"
+# musl targets build fully static binaries (SPEC §3.4). crt-static is pinned
+# PER TARGET (not a global default target): forcing one target in [build]
+# would break native builds on macOS/Windows hosts, and a global RUSTFLAGS
+# crt-static is invalid on non-musl targets.
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]
 
-[profile.release]
-# crt-static is default on musl; declared explicitly so a future target change
-# cannot silently regress the no-external-deps guarantee.
-[env]
-RUSTFLAGS = "-C target-feature=+crt-static"
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]

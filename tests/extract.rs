@@ -512,10 +512,14 @@ fn extra_filename_params_become_hard_links() {
     assert_eq!(primary.file, dir.join("primary.pdf"));
     assert_eq!(alias.file, dir.join("alias.pdf"));
     assert!(alias.hard_link_of.is_some());
-    use std::os::unix::fs::MetadataExt;
-    let a = std::fs::metadata(&primary.file).unwrap();
-    let b = std::fs::metadata(&alias.file).unwrap();
-    assert_eq!(a.ino(), b.ino(), "must be the same inode");
+    // Same-inode assert: unix-only (Windows uses the file-index identity).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let a = std::fs::metadata(&primary.file).unwrap();
+        let b = std::fs::metadata(&alias.file).unwrap();
+        assert_eq!(a.ino(), b.ino(), "must be the same inode");
+    }
 }
 
 #[test]
@@ -532,6 +536,9 @@ fn second_run_uniquifies_against_existing_files() {
     assert_eq!(r2.parts[0].file, dir.join("again_1.pdf"), "{r2:?}");
 }
 
+// Symlink planting needs unix symlink creation (and semantics); the
+// Windows slot-occupation path is compile-checked but exercised manually.
+#[cfg(unix)]
 #[test]
 fn planted_symlink_is_refused() {
     // Review finding: a dangling symlink must not capture the write.

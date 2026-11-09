@@ -261,6 +261,9 @@ fn zero_renames_leaves_no_journal() {
     assert!(!journal.exists() || std::fs::read_dir(&journal).unwrap().next().is_none());
 }
 
+// chmod-based read-only dir: unix only (Windows ACLs are a different
+// mechanism; the same commit-error path is covered by the write tests).
+#[cfg(unix)]
 #[test]
 fn first_rename_failure_leaves_no_journal() {
     let root = tmpdir("readonly");

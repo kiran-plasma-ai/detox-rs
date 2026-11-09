@@ -46,9 +46,15 @@ detox-rs undo                    # removes the extracted batch too
 ## Build
 
 ```sh
-rustup target add x86_64-unknown-linux-musl   # once
-cargo build --release                          # artifact: target/x86_64-unknown-linux-musl/release/detox-rs
+# Linux x86_64 static binary (the primary artifact):
+cargo build --release --target x86_64-unknown-linux-musl
+# → target/x86_64-unknown-linux-musl/release/detox-rs
+
+# or packaged, for any supported target:
+dist/build.sh x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 ```
+
+Cross-platform: the crate compiles for `x86_64/aarch64-unknown-linux-musl`, `x86_64/aarch64-apple-darwin` (lipo them for universal2), and `x86_64-pc-windows-msvc` — `dist/build.sh` and `.github/workflows/release.yml` build all of them; macOS gets an atomic no-replace rename (`renamex_np`) and Windows gets a real volume+file-index identity for undo checks. Release binaries attach to GitHub tags.
 
 Three small crates (`libc`, `unicode-normalization`, `unicode-general-category`) are statically linked in; there are no runtime dependencies. `Cargo.lock` is committed and the build is reproducible (verified bit-for-bit from a clean tree).
 
