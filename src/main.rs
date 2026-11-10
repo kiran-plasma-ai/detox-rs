@@ -6,5 +6,6 @@
 mod cli;
 
 fn main() {
+    // Dispatch entry point: cli::run lives in src/cli/mod.rs.
     std::process::exit(cli::run());
 }
