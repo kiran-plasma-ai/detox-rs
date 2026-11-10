@@ -109,8 +109,6 @@ pub fn undo(sel: UndoSel, journal_dir: &Path) -> Result<UndoReport, UndoError> {
     Ok(report)
 }
 
-
-
 fn restore_one(e: &JEntry) -> Result<(), SkipReason> {
     // lstat: match the link's own identity, not its target's.
     let md = match fs::symlink_metadata(&e.new) {

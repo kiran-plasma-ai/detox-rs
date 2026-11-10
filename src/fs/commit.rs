@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 use super::journal::{journal_path, write_journal, JEntry};
 use super::{lstat_exists, Plan, PlanItem};
 
-
 #[derive(Debug)]
 pub struct CommitReport {
     pub renamed: usize,

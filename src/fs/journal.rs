@@ -7,7 +7,6 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-
 #[derive(Debug)]
 pub(super) struct JEntry {
     pub(super) old: PathBuf,
@@ -84,7 +83,6 @@ pub(super) fn jparse(line: &str) -> Option<JEntry> {
         create: line.contains("\"create\":true"),
     })
 }
-
 
 pub(super) fn journal_path(journal_dir: &Path, run: &str) -> PathBuf {
     let ts = std::time::SystemTime::now()
