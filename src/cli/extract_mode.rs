@@ -1,6 +1,12 @@
 //! `extract` mode: MIME attachment extraction (EXTRACT.md). Thin wrapper:
 //! parse ripMIME-compatible flags into [`ExtractOptions`], call the library,
 //! report the parts NDJSON-or-human.
+//!
+//! This file is only the CLI front-end. The extraction engine lives in the
+//! library: `src/extract.rs` (module root: public types + `extract()`) with
+//! its internals in `src/extract/{decode,rfc2047,mime,filename,walk}.rs`.
+//! The `_mode` suffix = one of the four CLI modes (see rename_mode,
+//! strings_mode, undo_mode).
 
 use std::io::BufWriter;
 use std::path::PathBuf;
