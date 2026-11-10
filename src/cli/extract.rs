@@ -54,9 +54,9 @@ impl ExtractArgs {
     }
 }
 
-pub fn run(args: &[String]) -> i32 {
+pub fn run(args: &[std::ffi::OsString]) -> i32 {
     let mut c = ExtractArgs::defaults();
-    let mut a = Args::from_strings(args);
+    let mut a = Args::new(args.to_vec());
     while let Some(arg) = a.next() {
         let cur = arg.to_str().map(str::to_string);
         match cur.as_deref() {

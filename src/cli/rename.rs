@@ -51,9 +51,9 @@ impl RenameArgs {
     }
 }
 
-pub fn run(argv: &[String]) -> i32 {
+pub fn run(argv: &[std::ffi::OsString]) -> i32 {
     let mut c = RenameArgs::defaults();
-    let mut a = Args::from_strings(argv);
+    let mut a = Args::new(argv.to_vec());
     while let Some(arg) = a.next() {
         let cur = arg.to_str().map(str::to_string);
         match cur.as_deref() {

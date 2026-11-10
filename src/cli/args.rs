@@ -15,11 +15,8 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn from_strings(items: &[String]) -> Self {
-        Args {
-            items: items.iter().map(OsString::from).collect(),
-            i: 0,
-        }
+    pub fn new(items: Vec<OsString>) -> Self {
+        Args { items, i: 0 }
     }
 
     /// Consume and return the next argument.

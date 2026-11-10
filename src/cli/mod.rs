@@ -16,8 +16,12 @@ pub mod undo;
 use std::io::Write;
 
 /// Entry point: dispatch on the mode word, in `main`'s old order.
+///
+/// argv stays `OsString`: filenames may be non-UTF-8, and `std::env::args()`
+/// panics on those (this switch is the one intentional behavior change of
+/// the cli/ split — isolated in its own commit).
 pub fn run() -> i32 {
-    let argv: Vec<String> = std::env::args().skip(1).collect();
+    let argv: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     if argv.iter().any(|a| a == "--strings") {
         return strings::run(&argv);
     }

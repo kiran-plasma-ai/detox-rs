@@ -35,18 +35,18 @@ impl StringsArgs {
     }
 }
 
-pub fn run(argv: &[String]) -> i32 {
+pub fn run(argv: &[std::ffi::OsString]) -> i32 {
     // Historical filter, preserved verbatim: the mode words are dropped
     // wherever they appear, so a path literally named "run" never reaches
     // strings mode (observed quirk — fixing it is a behavior change).
-    let flags: Vec<String> = argv
+    let flags: Vec<std::ffi::OsString> = argv
         .iter()
-        .filter(|a| *a != "--strings" && *a != "check" && *a != "run")
+        .filter(|a| !matches!(a.to_str(), Some("--strings") | Some("check") | Some("run")))
         .cloned()
         .collect();
 
     let mut c = StringsArgs::defaults();
-    let mut a = Args::from_strings(&flags);
+    let mut a = Args::new(flags);
     while let Some(arg) = a.next() {
         let cur = arg.to_str().map(str::to_string);
         match cur.as_deref() {

@@ -6,10 +6,10 @@ use detox_rs::fs::{self, SkipReason, UndoSel};
 
 use super::args::Args;
 
-pub fn run(args: &[String]) -> i32 {
+pub fn run(args: &[std::ffi::OsString]) -> i32 {
     let mut sel = UndoSel::Last;
     let mut journal_dir = fs::journal_dir();
-    let mut a = Args::from_strings(args);
+    let mut a = Args::new(args.to_vec());
     while let Some(arg) = a.next() {
         match arg.to_str() {
             Some("--last") => sel = UndoSel::Last,
