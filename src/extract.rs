@@ -86,8 +86,6 @@ impl std::fmt::Display for ExtractError {
     }
 }
 
-// ---------------------------------------------------------------- extract --
-
 pub fn extract(input: &[u8], opts: &ExtractOptions) -> Result<ExtractReport, ExtractError> {
     std::fs::create_dir_all(&opts.out_dir)
         .map_err(|e| ExtractError(format!("out dir: {e}")))?;
