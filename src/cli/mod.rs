@@ -7,11 +7,11 @@
 //! (a `process::exit` discards the unflushed buffer — that is kept).
 
 pub mod args;
-pub mod extract;
-pub mod rename;
+pub mod extract_mode;
+pub mod rename_mode;
 pub mod report;
-pub mod strings;
-pub mod undo;
+pub mod strings_mode;
+pub mod undo_mode;
 
 use std::io::Write;
 
@@ -23,15 +23,15 @@ use std::io::Write;
 pub fn run() -> i32 {
     let argv: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
     if argv.iter().any(|a| a == "--strings") {
-        return strings::run(&argv);
+        return strings_mode::run(&argv);
     }
     if argv.first().is_some_and(|a| a == "undo") {
-        return undo::run(&argv[1..]);
+        return undo_mode::run(&argv[1..]);
     }
     if argv.first().is_some_and(|a| a == "extract") {
-        return extract::run(&argv[1..]);
+        return extract_mode::run(&argv[1..]);
     }
-    rename::run(&argv)
+    rename_mode::run(&argv)
 }
 
 pub fn usage() -> ! {
