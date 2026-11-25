@@ -1,5 +1,9 @@
 # detox-rs
 
+![license](https://img.shields.io/badge/license-BSD--3--Clause-blue)
+![binary](https://img.shields.io/badge/binary-static--pie%20musl%2C%20%E2%89%88950%20KB-green)
+![deps](https://img.shields.io/badge/runtime%20deps-none-success)
+
 **Filename remediation and MIME attachment extraction — a from-scratch successor to [detox](https://github.com/dharple/detox), informed by the filename-handling failures of [ripMIME](https://github.com/inflex/ripmime).**
 
 Clean names, never lose data: no overwrites ever (renameat2 `RENAME_NOREPLACE`), every rename journaled and undoable, output provably confined to the target directory, dry-run first-class, machine-readable output throughout.
