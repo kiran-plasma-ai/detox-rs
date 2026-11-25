@@ -2,3 +2,4 @@
 # tests/malformed.rs is the traversal/attack test catalog: "/etc/passwd" et al. are
 # malicious-input fixtures the extractor must neutralize, not secrets.
 tests/malformed\.rs:.*passwd
+^\.leakscan-allow:
